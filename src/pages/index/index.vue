@@ -66,7 +66,7 @@
         <view class="form-item">
           <text class="label">重复密码</text>
           <view class="input-with-icon">
-            <input class="input" :password="!showRegisterConfirm" v-model="registerForm.rePassword"
+            <input class="input" :password="!showRegisterConfirm" v-model="registerForm.confirmPassword"
               placeholder="请再次输入密码" />
             <uni-icons :type="showRegisterConfirm ? 'eye-filled' : 'eye'" size="26" color="#999" class="password-icon"
               @click="showRegisterConfirm = !showRegisterConfirm" />
@@ -87,11 +87,22 @@
       </view>
 
       <view class="other-login-wrapper">
-        <view class="wechat-btn" @click="handleOtherLogin">
+        <button class="wechat-btn" @click="handleWechatCodeLogin" v-if="!showWxPhoneRegister">
           <view class="wechat-icon">
             <uni-icons type="weixin" color="#1aad19" size="50" />
           </view>
-        </view>
+        </button>
+        <button
+          v-else
+          class="wechat-btn"
+          open-type="getPhoneNumber"
+          @getphonenumber="handleGetPhoneNumber"
+        >
+          <view class="wechat-icon">
+            <uni-icons type="weixin" color="#1aad19" size="50" />
+          </view>
+          <text class="wechat-text">手机号注册</text>
+        </button>
       </view>
     </view>
   </view>
@@ -99,7 +110,7 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { getCaptcha, login, register } from '@/api/login.js'
+import { getCaptcha, login, register, wxCodeLogin, wxPhoneRegister } from '@/api/login.js'
 
 // 当前激活 tab：login / register
 const activeTab = ref('login')
@@ -116,15 +127,15 @@ const form = reactive({
 const registerForm = reactive({
   username: "",
   password: "",
-  rePassword: ""
+  confirmPassword: ""
 })
 
 const loading = ref(false)
 const registerLoading = ref(false)
-// 密码可见性控制
 const showLoginPassword = ref(false)
 const showRegisterPassword = ref(false)
 const showRegisterConfirm = ref(false)
+const showWxPhoneRegister = ref(false)
 
 // 示例验证码图片地址，实际项目中换成自己后端的验证码接口
 const captchaImageUrl = ref("")
@@ -198,12 +209,12 @@ const handleRegister = async () => {
     return
   }
 
-  if (!registerForm.rePassword) {
+  if (!registerForm.confirmPassword) {
     uni.showToast({ title: '请再次输入密码', icon: 'none' })
     return
   }
 
-  if (registerForm.password !== registerForm.rePassword) {
+  if (registerForm.password !== registerForm.confirmPassword) {
     uni.showToast({ title: '两次输入的密码不一致', icon: 'none' })
     return
   }
@@ -216,7 +227,7 @@ const handleRegister = async () => {
       uni.showToast({ title: '注册成功', icon: 'success' })
       registerForm.username = ''
       registerForm.password = ''
-      registerForm.rePassword = ''
+      registerForm.confirmPassword = ''
     } else {
       uni.showToast({ title: res.msg || '注册失败', icon: 'none' })
     }
@@ -227,8 +238,86 @@ const handleRegister = async () => {
   }
 }
 
-const handleOtherLogin = () => {
-  uni.showToast({ title: '这里可以接入微信/短信等登录方式', icon: 'none' })
+
+const handleWechatCodeLogin = () => {
+  uni.login({
+    provider: 'weixin',
+    success: async (res) => {
+      const code = res.code
+      if (!code) {
+        uni.showToast({ title: '获取登录凭证失败', icon: 'none' })
+        return
+      }
+      try {
+        const loginRes = await wxCodeLogin({ code })
+        if (loginRes && loginRes.code === 0) {
+          let token = ''
+          if (loginRes.data) {
+            if (typeof loginRes.data === 'string') {
+              token = loginRes.data
+            } else {
+              token = loginRes.data.token || loginRes.data.accessToken || loginRes.data.tokenKey || ''
+            }
+          }
+          if (token) {
+            uni.setStorageSync('token', token)
+            uni.showToast({ title: '登录成功', icon: 'success' })
+            showWxPhoneRegister.value = false
+          } else {
+            showWxPhoneRegister.value = true
+            uni.showToast({ title: '未找到账号，请授权手机号注册', icon: 'none' })
+          }
+        } else {
+          showWxPhoneRegister.value = true
+          uni.showToast({ title: (loginRes && loginRes.msg) || '未找到账号，请授权手机号注册', icon: 'none' })
+        }
+      } catch (error) {
+        uni.showToast({ title: '网络异常，登录失败', icon: 'none' })
+      }
+    },
+    fail: () => {
+      uni.showToast({ title: '微信登录失败', icon: 'none' })
+    },
+  })
+}
+
+const handleGetPhoneNumber = (e) => {
+  const detail = e.detail || {}
+  const { encryptedData, iv } = detail
+  if (!encryptedData || !iv) {
+    uni.showToast({ title: '获取手机号失败', icon: 'none' })
+    return
+  }
+  uni.login({
+    provider: 'weixin',
+    success: async (res) => {
+      const code = res.code
+      if (!code) {
+        uni.showToast({ title: '获取登录凭证失败', icon: 'none' })
+        return
+      }
+      try {
+        const registerRes = await wxPhoneRegister({ code, encryptedData, iv })
+        if (registerRes && registerRes.code === 0) {
+          let registerToken = ''
+          if (registerRes.data) {
+            if (typeof registerRes.data === 'string') registerToken = registerRes.data
+            else registerToken = registerRes.data.token || registerRes.data.accessToken || registerRes.data.tokenKey || ''
+          }
+          if (registerToken) uni.setStorageSync('token', registerToken)
+          uni.showToast({ title: '注册并登录成功', icon: 'success' })
+          showWxPhoneRegister.value = false
+        } else {
+          uni.showToast({ title: (registerRes && registerRes.msg) || '注册失败', icon: 'none' })
+        }
+      } catch (error) {
+        uni.showToast({ title: '网络异常，注册失败', icon: 'none' })
+      }
+    },
+    fail: () => {
+      uni.showToast({ title: '获取登录凭证失败', icon: 'none' })
+    },
+  })
 }
 
 const refreshCaptcha = () => {
@@ -406,7 +495,9 @@ const refreshCaptcha = () => {
   background-color: transparent;
   padding: 0;
 }
-
+.wechat-btn::after {
+  border: none;
+}
 .wechat-icon {
   width: 80rpx;
   height: 80rpx;
