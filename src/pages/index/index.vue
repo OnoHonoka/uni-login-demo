@@ -73,6 +73,15 @@
           </view>
         </view>
 
+        <view class="form-item captcha-row">
+          <text class="label">验证码</text>
+          <view class="captcha-content">
+            <input class="input captcha-input" type="number" v-model="registerForm.captcha" placeholder="请输入验证码（1234）"
+              maxlength="6" />
+            <image class="captcha-img" :src="captchaImageUrl" mode="aspectFit" @click="refreshCaptcha" />
+          </view>
+        </view>
+
         <button type="primary" class="register-btn" :loading="registerLoading" :disabled="loading || registerLoading"
           @click="handleRegister">
           {{ registerLoading ? '注册中...' : '注册' }}
@@ -127,7 +136,9 @@ const form = reactive({
 const registerForm = reactive({
   username: "",
   password: "",
-  confirmPassword: ""
+  confirmPassword: "",
+  captcha: "",
+  captchaId: "",
 })
 
 const loading = ref(false)
@@ -145,6 +156,7 @@ const getCaptchaFunc = async () => {
   if (res.code === 0) {
     captchaImageUrl.value = res.data.picPath
     form.captchaId = res.data.captchaId
+    registerForm.captchaId = res.data.captchaId
   }
 }
 
@@ -182,8 +194,13 @@ const handleLogin = async () => {
         else token = res.data.token || res.data.accessToken || res.data.tokenKey || ''
       }
       if (token) uni.setStorageSync('token', token)
-      uni.showToast({ title: '登录成功', icon: 'success' })
-      // 登录成功后清空表单
+      uni.showToast({
+        title: '登录成功',
+        icon: 'success',
+        success: () => {
+          uni.reLaunch({ url: '/pages/user/index' })
+        },
+      })
       form.username = ''
       form.password = ''
       form.captcha = ''
@@ -216,6 +233,11 @@ const handleRegister = async () => {
 
   if (registerForm.password !== registerForm.confirmPassword) {
     uni.showToast({ title: '两次输入的密码不一致', icon: 'none' })
+    return
+  }
+
+  if (!registerForm.captcha) {
+    uni.showToast({ title: '请输入验证码', icon: 'none' })
     return
   }
 
@@ -261,7 +283,13 @@ const handleWechatCodeLogin = () => {
           }
           if (token) {
             uni.setStorageSync('token', token)
-            uni.showToast({ title: '登录成功', icon: 'success' })
+            uni.showToast({
+              title: '登录成功',
+              icon: 'success',
+              success: () => {
+                uni.reLaunch({ url: '/pages/user/index' })
+              },
+            })
             showWxPhoneRegister.value = false
           } else {
             showWxPhoneRegister.value = true
@@ -305,7 +333,13 @@ const handleGetPhoneNumber = (e) => {
             else registerToken = registerRes.data.token || registerRes.data.accessToken || registerRes.data.tokenKey || ''
           }
           if (registerToken) uni.setStorageSync('token', registerToken)
-          uni.showToast({ title: '注册并登录成功', icon: 'success' })
+          uni.showToast({
+            title: '注册并登录成功',
+            icon: 'success',
+            success: () => {
+              uni.reLaunch({ url: '/pages/user/index' })
+            },
+          })
           showWxPhoneRegister.value = false
         } else {
           uni.showToast({ title: (registerRes && registerRes.msg) || '注册失败', icon: 'none' })
