@@ -10,7 +10,7 @@ export const getCaptcha = () => {
 // 二合一登录
 export const login = (data) => {
 	return request({
-		url: '/userInfo/login',
+		url: '/auth/login/password',
 		method: 'post',
 		data: data
 	})
@@ -18,7 +18,7 @@ export const login = (data) => {
 // 注册
 export const register = (data) => {
 	return request({
-		url: '/userInfo/register',
+		url: '/auth/register/password',
 		method: 'post',
 		data: data
 	})
@@ -26,7 +26,7 @@ export const register = (data) => {
 
 export const wxCodeLogin = (data) => {
 	return request({
-		url: '/userInfo/wxPhoneLogin',
+		url: '/auth/login/wechat',
 		method: 'post',
 		data: data
 	})
