@@ -34,8 +34,30 @@ export const wxCodeLogin = (data) => {
 
 export const wxPhoneRegister = (data) => {
 	return request({
-		url: '/userInfo/wxPhoneRegister',
+		url: '/auth/register/wechat',
 		method: 'post',
 		data: data
+	})
+}
+
+export const bindPassword = (data, token) => {
+	return request({
+		url: '/auth/bind/password',
+		method: 'post',
+		data: data,
+		header: {
+			'x-token': token
+		}
+	})
+}
+
+export const bindWechat = (data, token) => {
+	return request({
+		url: '/auth/bind/wechat',
+		method: 'post',
+		data: data,
+		header: {
+			'x-token': token
+		}
 	})
 }

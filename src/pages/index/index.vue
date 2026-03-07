@@ -189,11 +189,16 @@ const handleLogin = async () => {
     const res = await login(payload)
     if (res && res.code === 0) {
       let token = ''
+      let user = null
       if (res.data) {
         if (typeof res.data === 'string') token = res.data
-        else token = res.data.token || res.data.accessToken || res.data.tokenKey || ''
+        else {
+          token = res.data.token || res.data.accessToken || res.data.tokenKey || ''
+          user = res.data.user || null
+        }
       }
       if (token) uni.setStorageSync('token', token)
+      if (user) uni.setStorageSync('user', user)
       uni.showToast({
         title: '登录成功',
         icon: 'success',
@@ -274,15 +279,18 @@ const handleWechatCodeLogin = () => {
         const loginRes = await wxCodeLogin({ code })
         if (loginRes && loginRes.code === 0) {
           let token = ''
+          let user = null
           if (loginRes.data) {
             if (typeof loginRes.data === 'string') {
               token = loginRes.data
             } else {
               token = loginRes.data.token || loginRes.data.accessToken || loginRes.data.tokenKey || ''
+              user = loginRes.data.user || null
             }
           }
           if (token) {
             uni.setStorageSync('token', token)
+            if (user) uni.setStorageSync('user', user)
             uni.showToast({
               title: '登录成功',
               icon: 'success',
@@ -328,11 +336,16 @@ const handleGetPhoneNumber = (e) => {
         const registerRes = await wxPhoneRegister({ code, encryptedData, iv })
         if (registerRes && registerRes.code === 0) {
           let registerToken = ''
+          let user = null
           if (registerRes.data) {
             if (typeof registerRes.data === 'string') registerToken = registerRes.data
-            else registerToken = registerRes.data.token || registerRes.data.accessToken || registerRes.data.tokenKey || ''
+            else {
+              registerToken = registerRes.data.token || registerRes.data.accessToken || registerRes.data.tokenKey || ''
+              user = registerRes.data.user || null
+            }
           }
           if (registerToken) uni.setStorageSync('token', registerToken)
+          if (user) uni.setStorageSync('user', user)
           uni.showToast({
             title: '注册并登录成功',
             icon: 'success',
